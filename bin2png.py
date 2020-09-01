@@ -68,18 +68,18 @@ class FileReader(object):
             return map(ord, self.file.read(n))
 
 
-def choose_file_dimensions(infile, input_dimensions=None):
+def choose_file_dimensions(infile, input_dimensions=None, square=False, verbose=False):
     if input_dimensions is not None and len(input_dimensions) >= 2 and input_dimensions[0] is not None \
             and input_dimensions[1] is not None:
         # the dimensions were already fully specified
         return input_dimensions
-    infile = FileReader.new(infile)
+    #infile = FileReader.new(infile)
     num_bytes = len(infile)
     num_pixels = int(math.ceil(float(num_bytes) / 3.0))
     sqrt = math.sqrt(num_pixels)
     sqrt_max = int(math.ceil(sqrt))
 
-    if args.square is True:
+    if square is True:
         return sqrt_max, sqrt_max
 
     if input_dimensions is not None and len(input_dimensions) >= 1:
@@ -111,17 +111,15 @@ def choose_file_dimensions(infile, input_dimensions=None):
         if is_perfect:
             break
     if best_extra_bytes > 0:
-        # TODO: If verbose mode is on...
-        if args.verbose is True:
+        if verbose is True:
             sys.stderr.write("Could not find PNG dimensions that perfectly encode "
                              "%s bytes; the encoding will be tail-padded with %s zeros.\n"
                              % (num_bytes, int(best_extra_bytes)))
     return best_dimensions
 
 
-def file_to_png(infile, outfile, dimensions=None):
-    reader = FileReader.new(infile)
-    dimensions = choose_file_dimensions(reader, dimensions)
+def file_to_png(reader, outfile, no_progress=False, dimensions=None):
+    
     dim = (int(dimensions[0]), int(dimensions[1]))
     img = Image.new('RGB', dim)
     pixels = img.load()
@@ -136,7 +134,7 @@ def file_to_png(infile, outfile, dimensions=None):
         if column >= img.size[0]:
             column = 0
             row += 1
-            if args.no_progress is False:
+            if no_progress is False:
                 percent = float(((row + 1) // dimensions[1]) * 100)
                 sys.stderr.write("\r%s%s" % (round(percent, 2), "%"))
 
@@ -151,7 +149,7 @@ def file_to_png(infile, outfile, dimensions=None):
 
         if not row >= img.size[1]:
             pixels[column, row] = tuple(color)
-    if args.no_progress is False:
+    if no_progress is False:
         sys.stderr.write("\n")
     if sys.version_info.major >= 3 and outfile.name == '<stdout>' and hasattr(outfile, 'buffer'):
         outfile = outfile.buffer
@@ -159,7 +157,8 @@ def file_to_png(infile, outfile, dimensions=None):
 
 
 def png_to_file(infile, outfile, no_progress=False, verbose=False):
-    with FileReader.new(infile, file_backed=True) as reader:
+    #with FileReader.new(infile, file_backed=True) as reader:
+    with infile as reader:
         img = Image.open(reader.name)
         rgb_im = img.convert('RGB')
 
@@ -205,7 +204,7 @@ def png_to_file(infile, outfile, no_progress=False, verbose=False):
 def main(argv=None):
     parser = argparse.ArgumentParser(description="A simple cross-platform script for encoding any binary file into a "
                                                  "lossless PNG.", prog="bin2png")
-
+    
     if sys.version_info.major >= 3:
         read_mode = 'rb'
         write_mode = 'wb'
@@ -214,7 +213,8 @@ def main(argv=None):
         read_mode = 'r'
         write_mode = 'w'
         out_default = sys.stdout
-    parser.add_argument('file', type=argparse.FileType(read_mode), default=sys.stdin,
+        
+    parser.add_argument('file', type=argparse.FileType(read_mode), default=sys.stdin, nargs='?',
                         help="the file to encode as a PNG (defaults to '-', which is stdin)")
     parser.add_argument("-o", "--outfile", type=argparse.FileType(write_mode), default=out_default,
                         help="the output file (defaults to '-', which is stdout)")
@@ -231,16 +231,21 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
 
+    #Remove the first argument (the name of this file itsself)
+    argv.pop(0)
     args = parser.parse_args(argv)
 
     if args.decode:
-        png_to_file(args.file, args.outfile, no_progress=args.no_progress, verbose=args.verbose)
+        reader = FileReader.new(args.file, file_backed=True)
+        png_to_file(reader, args.outfile, no_progress=args.no_progress, verbose=args.verbose)
     else:
         dims = None
         if args.height is not None or args.width is not None:
             dims = (args.width, args.height)
-
-        file_to_png(args.file, args.outfile, dimensions=dims)
+        
+        reader = FileReader.new(args.file)
+        calc_dimensions = choose_file_dimensions(reader, dims, square=args.square, verbose=args.verbose)
+        file_to_png(reader, args.outfile, no_progress=args.no_progress, dimensions=calc_dimensions)
 
 
 if __name__ == "__main__":
