@@ -118,7 +118,7 @@ def choose_file_dimensions(infile, input_dimensions=None, square=False, verbose=
     return best_dimensions
 
 
-def file_to_png(reader, outfile, no_progress=False, dimensions=None):
+def file_to_png(reader, outfile, dimensions, progress=False):
     
     dim = (int(dimensions[0]), int(dimensions[1]))
     img = Image.new('RGB', dim)
@@ -134,7 +134,7 @@ def file_to_png(reader, outfile, no_progress=False, dimensions=None):
         if column >= img.size[0]:
             column = 0
             row += 1
-            if no_progress is False:
+            if progress is True:
                 percent = float(((row + 1) // dimensions[1]) * 100)
                 sys.stderr.write("\r%s%s" % (round(percent, 2), "%"))
 
@@ -149,14 +149,17 @@ def file_to_png(reader, outfile, no_progress=False, dimensions=None):
 
         if not row >= img.size[1]:
             pixels[column, row] = tuple(color)
-    if no_progress is False:
+    if progress is True:
         sys.stderr.write("\n")
-    if sys.version_info.major >= 3 and outfile.name == '<stdout>' and hasattr(outfile, 'buffer'):
+    if outfile and sys.version_info.major >= 3 and outfile.name == '<stdout>' and hasattr(outfile, 'buffer'):
         outfile = outfile.buffer
-    img.save(outfile, format="PNG")
+    if outfile:
+        img.save(outfile, format="PNG")
+    else:
+        return img
 
 
-def png_to_file(infile, outfile, no_progress=False, verbose=False):
+def png_to_file(infile, outfile, progress=True, verbose=False):
     #with FileReader.new(infile, file_backed=True) as reader:
     with infile as reader:
         img = Image.open(reader.name)
@@ -164,7 +167,7 @@ def png_to_file(infile, outfile, no_progress=False, verbose=False):
 
         pix_buffer = 0
         for row in range(img.size[1]):
-            if not no_progress:
+            if progress is True:
                 percent = float(((row + 1) // img.size[1]) * 100)
                 sys.stderr.write("\r%s%s" % (round(percent, 2), "%"))
             for col in range(img.size[0]):
@@ -191,7 +194,7 @@ def png_to_file(infile, outfile, no_progress=False, verbose=False):
                         else:
                             outfile.write(chr(segment))
 
-        if not no_progress:
+        if progress is True:
             sys.stderr.write("\n")
         if pix_buffer != 0 and verbose:
             length = pix_buffer
@@ -201,9 +204,39 @@ def png_to_file(infile, outfile, no_progress=False, verbose=False):
                 sys.stderr.write("Omitting %s zeroes from end of file\n" % pix_buffer)
 
 
+
+def encode(infile, outfile=None, square=False, width=None, height=None, progress=False, verbose=False):
+    if sys.version_info.major >= 3:
+        file_mode = 'wb'
+        read_mode = 'rb'
+    else:
+        file_mode = 'w'
+        read_mode = 'r'
+        
+    if isinstance(infile, str):
+        infile = open(infile, read_mode)
+    if isinstance(outfile, str):
+        outfile = open(outfile, file_mode)
+        
+    dims = None
+    if width is not None or height is not None:
+        dims = (width, height)
+    #Both functions need to use the same file reader.
+    reader = FileReader.new(infile)
+    calc_dimensions = choose_file_dimensions(reader, dims, square=square,verbose=verbose)
+    return file_to_png(reader, outfile, calc_dimensions, progress=progress)
+
+
+
+
+#TODO: def decode(infile, outfile=None, progress=False, verbose=False):
+
+
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="A simple cross-platform script for encoding any binary file into a "
-                                                 "lossless PNG.", prog="bin2png")
+        "lossless PNG.", prog="bin2png")
     
     if sys.version_info.major >= 3:
         read_mode = 'rb'
@@ -226,7 +259,7 @@ def main(argv=None):
                         help="constrain the output PNG to a specific height")
     parser.add_argument("-s", "--square", action="store_true", default=False, help="generate only square images")
     parser.add_argument("-v", "--verbose", action="store_true", default=False, help="enable debugging messages")
-    parser.add_argument("--no-progress", action="store_true", default=False, help="don't display percent progress")
+    parser.add_argument("-p", "--progress", action="store_true", default=False, help="display percent progress")
 
     if argv is None:
         argv = sys.argv
@@ -237,15 +270,9 @@ def main(argv=None):
 
     if args.decode:
         reader = FileReader.new(args.file, file_backed=True)
-        png_to_file(reader, args.outfile, no_progress=args.no_progress, verbose=args.verbose)
+        png_to_file(reader, args.outfile, progress=args.progress, verbose=args.verbose)
     else:
-        dims = None
-        if args.height is not None or args.width is not None:
-            dims = (args.width, args.height)
-        
-        reader = FileReader.new(args.file)
-        calc_dimensions = choose_file_dimensions(reader, dims, square=args.square, verbose=args.verbose)
-        file_to_png(reader, args.outfile, no_progress=args.no_progress, dimensions=calc_dimensions)
+        encode(args.file, outfile=args.outfile, square=args.square, width=args.width, height=args.height, progress=args.progress, verbose=args.verbose)
 
 
 if __name__ == "__main__":
