@@ -35,13 +35,13 @@ Initial Python3 port by [zenarcher007](https://github.com/zenarcher007), along w
 options.
 
 
------------
-Fork by zenarcher007:
-Latest commit:
+-----------  
+Fork by zenarcher007:  
+Latest commit:  
 • Changed --no-progress to -p --progress in order to follow standards and eliminate confusion in the code and
-when being used as a module.
+when being used as a module.  
 • You can now use bin2png.encode(infile, outfile=(path), square=(bool), width=(number), height=(number), progress=(bool), verbose=(bool))
-when importing bin2png as a module in a script.
+when importing bin2png as a module in a script.  
 ```
 >>> import bin2png
 >>> f = bin2png.encode("test")
