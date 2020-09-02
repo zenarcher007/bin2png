@@ -42,8 +42,10 @@ Latest commit:
 when being used as a module.
 • You can now use bin2png.encode(infile, outfile=(path), square=(bool), width=(number), height=(number), progress=(bool), verbose=(bool))
 when importing bin2png as a module in a script.
+```
 >>> import bin2png
 >>> f = bin2png.encode("test")
 >>> print(f)
 <PIL.Image.Image image mode=RGB size=72x1987 at 0x10752DD90>
-I will implement bin2png.decode next.
+```
+I will try to implement bin2png.decode next.
