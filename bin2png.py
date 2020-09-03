@@ -161,10 +161,31 @@ def file_to_png(reader, outfile, dimensions, progress=False):
 
 def png_to_file(infile, outfile, progress=True, verbose=False):
     #with FileReader.new(infile, file_backed=True) as reader:
+    if isinstance(infile, Image.Image):
+        #In this mode, a full PNG image was already provided through input
+        isInputImage = True
+        returnArray = bytearray()
+        
     with infile as reader:
-        img = Image.open(reader.name)
+        if isInputImage:
+            img = infile
+        else:
+            img = Image.open(reader.name)
         rgb_im = img.convert('RGB')
+        #TODO: Only store the image that is needed to save RAM?
 
+        def writeOutput(data): #Nested function to improve readability below
+            if sys.version_info.major >= 3:
+                if outfile:
+                    outfile.write(bytes([data]))
+                else:
+                    returnArray.append(data)
+            else:
+                if outfile:
+                    outfile.write(chr(data))
+                else:
+                    returnArray.append(data)
+            
         pix_buffer = 0
         for row in range(img.size[1]):
             if progress is True:
@@ -184,15 +205,11 @@ def png_to_file(infile, outfile, progress=True, verbose=False):
                         if pix_buffer != 0:
                             for color in range(pix_buffer):
                                 # flush the cache to the file if a non-null byte was detected
-                                if sys.version_info.major >= 3:
-                                    outfile.write(bytes([0]))
-                                else:
-                                    outfile.write(chr(0))
+                                writeOutput(0)
+                                #returnArray.append(0)
                             pix_buffer = 0
-                        if sys.version_info.major >= 3:
-                            outfile.write(bytes([segment]))
-                        else:
-                            outfile.write(chr(segment))
+                        writeOutput(segment)
+                        #returnArray.append(segment)
 
         if progress is True:
             sys.stderr.write("\n")
@@ -202,6 +219,10 @@ def png_to_file(infile, outfile, progress=True, verbose=False):
                 sys.stderr.write("Omitting %s zero from end of file\n" % pix_buffer)
             else:  # Why not...
                 sys.stderr.write("Omitting %s zeroes from end of file\n" % pix_buffer)
+        
+        if not outfile:
+            #return bytearray(str(returnArray,'char'), 'char')
+            return bytes(returnArray) #.decode(encoding='UTF-8')
 
 
 
@@ -221,7 +242,7 @@ def encode(infile, outfile=None, square=False, width=None, height=None, progress
     dims = None
     if width is not None or height is not None:
         dims = (width, height)
-    #Both functions need to use the same file reader.
+    #Both functions need to use the same file reader for best results.
     reader = FileReader.new(infile)
     calc_dimensions = choose_file_dimensions(reader, dims, square=square,verbose=verbose)
     return file_to_png(reader, outfile, calc_dimensions, progress=progress)
@@ -229,9 +250,29 @@ def encode(infile, outfile=None, square=False, width=None, height=None, progress
 
 
 
-#TODO: def decode(infile, outfile=None, progress=False, verbose=False):
-
-
+def decode(infile, outfile=None, progress=False, verbose=False):
+    if sys.version_info.major >= 3:
+        file_mode = 'wb'
+        read_mode = 'rb'
+    else:
+        file_mode = 'w'
+        read_mode = 'r'
+        
+    if isinstance(infile, str):
+        infile = open(infile, read_mode)
+    if isinstance(outfile, str):
+        outfile = open(outfile, file_mode)
+    
+    #if not isinstance(infile, Image.Image) and not hasattr(infile, "name"):
+    #    print("noarggggg")
+    reader = None
+    if not isinstance(infile, Image.Image): #Don't need a reader because
+        #a full image is already passed in
+        reader = FileReader.new(infile, file_backed=True)
+    else:
+        reader = infile
+        
+    return png_to_file(reader, outfile, progress=progress, verbose=verbose)
 
 
 def main(argv=None):
@@ -269,8 +310,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     if args.decode:
-        reader = FileReader.new(args.file, file_backed=True)
-        png_to_file(reader, args.outfile, progress=args.progress, verbose=args.verbose)
+        decode(reader, args.outfile, progress=args.progress, verbose=args.verbose)
     else:
         encode(args.file, outfile=args.outfile, square=args.square, width=args.width, height=args.height, progress=args.progress, verbose=args.verbose)
 

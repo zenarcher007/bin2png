@@ -44,8 +44,19 @@ when being used as a module.
 when importing bin2png as a module in a script.  
 ```
 >>> import bin2png
->>> f = bin2png.encode("test")
+>>> f = bin2png.encode("path/test")
 >>> print(f)
 <PIL.Image.Image image mode=RGB size=72x1987 at 0x10752DD90>
 ```
-I will try to implement bin2png.decode next.
+----------
+9/3  
+Implemented decode function  
+To be used as a module in a script, the encode and decode functions may have to  
+be split into a separate file in the future, and using it may look like this:  
+```
+from bin2png import Encoder
+f = Encoder.encode("path/test")
+
+g = Encoder.decode(f)
+print(g)
+```
