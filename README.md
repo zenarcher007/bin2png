@@ -38,25 +38,19 @@ options.
 -----------  
 Fork by zenarcher007:  
 Latest commit:  
-• Changed --no-progress to -p --progress in order to follow standards and eliminate confusion in the code and
+• Changed --no-progress to -p --progress in order to eliminate confusion in the code and
 when being used as a module.  
-• You can now use bin2png.encode(infile, outfile=(path), square=(bool), width=(number), height=(number), progress=(bool), verbose=(bool))
+• You can now use Encoder.encode(infile, outfile=(path), square=(bool), width=(number), height=(number), progress=(bool), verbose=(bool))
 when importing bin2png as a module in a script.  
-```
->>> import bin2png
->>> f = bin2png.encode("path/test")
->>> print(f)
-<PIL.Image.Image image mode=RGB size=72x1987 at 0x10752DD90>
-```
-----------
-9/3  
+
+  
 Implemented decode function  
-To be used as a module in a script, the encode and decode functions may have to  
-be split into a separate file in the future, and using it may look like this:  
+To be used as a module in a script, the encode and decode functions  
+are split into a separate file. Here is an example of usage:  
 ```
 from bin2png import Encoder
-f = Encoder.encode("path/test")
+f = Encoder.encode("path/test")    # <<(returns a png image)
+print(f)   # <<<  <PIL.Image.Image image mode=RGB size=72x1987 at 0x10752DD90>
 
-g = Encoder.decode(f)
-print(g)
+g = Encoder.decode(f)    # <<(returns a bytes object)
 ```
